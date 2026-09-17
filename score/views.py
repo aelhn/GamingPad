@@ -278,7 +278,7 @@ def determiner_role_president(position, total_joueurs):
         return 'Trouduc'
     if total_joueurs >= 4:
         if position == 2:
-            return 'Vice-président'
+            return 'Vice-Président'
         if position == total_joueurs -1:
             return 'Vice-Trouduc'
     return 'Suisse'
