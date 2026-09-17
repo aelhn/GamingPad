@@ -1,5 +1,6 @@
 from ast import Lambda
 from pyclbr import Class
+import re
 
 from django.contrib.admin.views.decorators import staff_member_required
 from django.http import JsonResponse
@@ -8,7 +9,7 @@ from django.db.models import Sum, Max
 from django.utils import timezone
 
 from score.forms import JoueurForm, CouleurForm, SuggestionForm
-from .models import ListeJoueurs, Partie, Suggestion, Tour, ScoreTour, ClassementPartie, ClassementManche
+from .models import AjustementDumble, ListeJoueurs, Partie, Suggestion, Tour, ScoreTour, ClassementPartie, ClassementManche
 
 def ajout_rapide_joueur(request): # Depuis la sélection des joueurs, permet un ajout rapide et simplifié d'un joueur via JSON (sans request donc sans recharger la page et donc perdre la liste)
     if request.method == "POST":
@@ -268,6 +269,15 @@ def debut_President(request):
         'nb_manches_total': partie.tours.filter(valide=True).count(),
     })
 
+def calculer_totaux_dumble(partie, joueurs):
+    # Calcul du score + si joueur éliminé ou non (score > 100)
+    totaux = {}
+    for joueur in joueurs:
+        brut = ScoreTour.objects.filter(tour__partie=partie, joueur=joueur).aggregate(Sum('score'))['score__sum'] or 0
+        ajustement = AjustementDumble.objects.filter(partie=partie, joueur=joueur).aggregate(Sum('valeur'))['valeur__sum'] or 0
+        total = brut + ajustement
+        totaux[joueur.id] = {'total': total, 'elimine': total > 100}
+    return totaux
 
 def determiner_role_president(position, total_joueurs):
     # Président et trouduc automatiquements attribués (1ère et dernière place)
@@ -284,7 +294,61 @@ def determiner_role_president(position, total_joueurs):
     return 'Suisse'
 
 def debut_Dumble(request):
-    return render(request, 'partie/dumble.html')
+    if 'joueurs_dumble' not in request.session:
+        return redirect ('selection_partie', type_jeu='dumble')
+
+    ids_selectionnes = request.session.get('joueurs_dumble')
+
+    partie_id = request.session.get('partie_dumble_id')
+    Partie.objects.filter(typeJeu='dumble', dateFin__isnull=True).exclude(id=partie_id).delete()
+
+    partie = None
+    if partie_id:
+        partie = Partie.objects.filter(id=partie_id, dateFin__isnull=True).first()
+    if not partie:
+        partie = Partie.objects.create(typeJeu='dumble')
+        request.session['partie_dumble_id'] = partie.id
+
+    joueurs = ListeJoueurs.objects.filter(id__in=ids_selectionnes).order_by('joueurNum')
+    tours = partie.tours.order_by('numero')
+
+    if request.method == "POST" and 'valider_tour' in request.POST: # TODO : Expliquer le 'valider_tour' in request.POST. Qu'est-ce qu'on essaie de faire ici
+        dernier_numero = tours.aggregate(Max('numero'))['numero__max'] or 0
+        tour = Tour.objects.create(partie=partie, numero=dernier_numero + 1)
+
+        # id du joueur qui a fait dumble
+        id_dumble = request.POST.get('joueur_dumble')
+
+        for joueur in joueurs:
+            score_str = request.POST.get(f'score_{joueur.id}')
+            if not score_str:
+                continue
+            a_dumble = str(joueur.id) == id_dumble
+
+            score = 0 if a_dumble else int(score_str) # Attribue 0 au score automatiquement si a dumble à ce tour
+
+            ScoreTour.objects.create(tour=tour, joueur=joueur, score=score, dumble=a_dumble)
+
+        # Calcul totaux + vérifie si un des scores vaut 100, auquel cas retourne à 50
+        totaux = calculer_totaux_dumble(partie, joueurs)
+        for joueur in joueurs:
+            if totaux[joueur.id]['total'] == 100:
+                AjustementDumble.objects.create(partie=partie, joueur=joueur, valeur=-50)
+
+        return redirect('partie_Dumble')
+
+    if request.method == "POST" and 'fin_partie' in request.POST:
+        return redirect('fin_partie', partie_id=partie.id)
+
+    totaux = calculer_totaux_dumble(partie, joueurs)
+
+    return render(request, 'partie/dumble.html', {
+        'joueurs': joueurs,
+        'totaux': totaux,
+        'tours': tours,
+        'numero_tour_actif': (tours.aggregate(Max('numero'))['numero__max'] or 0) + 1,
+    })
+
 
 def fin_partie(request, partie_id): # Calcul le score final des joueurs, qui gagne la partie (en fonction du type de jeu), enregistre ces infos puis les affiche
     partie = get_object_or_404(Partie, id=partie_id)
@@ -337,16 +401,20 @@ def fin_partie(request, partie_id): # Calcul le score final des joueurs, qui gag
             partie.gagnant_id = score_totaux[0]['joueur_id']
 
     else:
-        score_totaux = list(
-            ScoreTour.objects.filter(tour__partie=partie)
-            .values('joueur__joueurNom', 'joueur_id')
-            .annotate(total=Sum('score'))
-        )
-        score_totaux.sort(key=lambda s: -s['total'])
+        # Dumble : Le moins de pts gagne, en tant compte des cas particuliers (si score = 100 alors retombe à 50)
+        ids_selectionnes = request.session.get('joueurs_dumble', [])
+        joueurs = ListeJoueurs.objects.filter(id__in=ids_selectionnes)
+        totaux = calculer_totaux_dumble(partie, joueurs)
 
-        if score_totaux:
-            partie.gagnant_id = score_totaux[0]['joueur_id']
-
+        score_totaux = []
+        for joueur in joueurs:
+            score_totaux.append({ # TODO : Pourquoi des __ ici pour joueurNom et pas pour _couleur ou _id
+                'joueur__joueurNom': joueur.joueurNom,
+                'joueur_couleur': joueur.couleur,
+                'joueur_id': joueur.id,
+                'total': totaux[joueur.id]['total'],
+            })
+        score_totaux.sort(key=lambda s: s['total'])
 
     # Enregistre la fin de partie (commun a tous les jeux, president compris)
     partie.dateFin = timezone.now()

@@ -71,11 +71,18 @@ class Tour(models.Model):
     numero = models.PositiveIntegerField()
     valide = models.BooleanField(default=False)  # Utilisé seulement pour le president pour l'instant : vaut True au clic sur "Manche suivante"
 
+class AjustementDumble(models.Model):
+    # Fonctionnement dumble avec Spécificités
+    partie = models.ForeignKey(Partie, on_delete=models.CASCADE, related_name='ajustements_dumble')
+    joueur = models.ForeignKey(ListeJoueurs, on_delete=models.CASCADE)
+    valeur = models.IntegerField()  # ex: -50 quand on tombe pile a 100
+
 class ScoreTour(models.Model):
     tour = models.ForeignKey(Tour, on_delete=models.CASCADE, related_name='scores')
     joueur = models.ForeignKey(ListeJoueurs, on_delete=models.CASCADE)
     score = models.IntegerField()
     casse = models.BooleanField(null=True, blank=True) # Que pour fléchettes 501
+    dumble = models.BooleanField(null=True, blank=True) # Que pour Dumble (true pour désigner le joueur qui a dumblé)
 
 class ClassementPartie(models.Model): # Enregistrement du classement de chaque joueur à chaque partie
     partie = models.ForeignKey(Partie, on_delete=models.CASCADE, related_name = "classements")

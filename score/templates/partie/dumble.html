@@ -1,8 +1,86 @@
 {% extends "partie/base.html" %}
+{% load dict_extras %}
+
+{% block container_class %}w-full max-w-7xl{% endblock %}
 
 {% block content %}
-<div class="text-center py-12">
-    <h1 class="text-3xl font-bold">Dumble</h1>
-    <p class="text-base-content/60 mt-2">Page en construction</p>
+<h1 class="text-3xl font-bold mb-2">Dumble</h1>
+<p class="opacity-60 mb-8">Tour {{ numero_tour_actif }} · saisis les scores, coche qui a annoncé Dumble</p>
+
+<div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+
+    <div class="space-y-6">
+        <div class="bg-base-200 rounded-xl p-8">
+
+            <div class="grid grid-cols-3 gap-2 mb-6">
+                {% for joueur in joueurs %}
+                <div class="bg-base-100 rounded-lg p-3 text-center">
+                    <p class="text-sm">
+                        <span style="color: {{ joueur.couleur }}; font-weight: bold;">{{ joueur.joueurNom }}</span>
+                        {% if totaux|get_item:joueur.id|get_item:'elimine' %}
+                        <span class="badge badge-sm" style="background-color: #e74c3c; color: white;">E</span>
+                        {% endif %}
+                    </p>
+                    <p class="text-xl font-bold">{{ totaux|get_item:joueur.id|get_item:'total' }}</p>
+                </div>
+                {% endfor %}
+            </div>
+
+            <form method="POST">
+                {% csrf_token %}
+                <p class="text-sm text-primary mb-1">Tour {{ numero_tour_actif }}</p>
+                <p class="text-xs opacity-50 mb-4">Coche le joueur qui a annoncé « Dumble » ce tour</p>
+                <div class="space-y-3 mb-6">
+                    {% for joueur in joueurs %}
+                    <div class="flex items-center gap-3">
+                        <label class="flex items-center gap-1.5 cursor-pointer">
+                            <input type="radio" name="joueur_dumble" value="{{ joueur.id }}" required class="radio radio-sm radio-accent">
+                        </label>
+                        <span style="color: {{ joueur.couleur }}; font-weight: bold;" class="flex-1">{{ joueur.joueurNom }}</span>
+                        <input type="number" name="score_{{ joueur.id }}" class="input input-bordered input-sm w-24" placeholder="Score" required>
+                    </div>
+                    {% endfor %}
+                </div>
+                <button type="submit" name="valider_tour" value="1" class="btn btn-primary w-full">Valider le tour</button>
+            </form>
+        </div>
+
+        <div class="flex gap-3">
+            <form method="POST" class="flex-1">
+                {% csrf_token %}
+                <button type="submit" name="fin_partie" value="1" class="btn btn-outline w-full" {% if not tours %}disabled{% endif %}>Fin de partie</button>
+            </form>
+            <form method="POST" action="{% url 'raz_partie' 'dumble' %}" class="flex-1">
+                {% csrf_token %}
+                <button type="submit" class="btn btn-outline btn-warning w-full">Réinitialiser</button>
+            </form>
+        </div>
+    </div>
+
+    <div class="bg-base-200 rounded-xl p-8">
+        <p class="font-medium mb-1">Historique</p>
+        <p class="text-sm opacity-50 mb-6">{{ tours|length }} tour{{ tours|length|pluralize }} joué{{ tours|length|pluralize }}</p>
+
+        {% for tour in tours %}
+        <div class="mb-6">
+            <div class="flex items-center gap-2 mb-3">
+                <span class="flex items-center justify-center w-6 h-6 rounded-full bg-base-100 text-xs opacity-60">{{ tour.numero }}</span>
+                <p class="text-xs opacity-50">Tour {{ tour.numero }}</p>
+            </div>
+            <div class="bg-base-100 rounded-lg divide-y divide-base-content/5">
+                {% for score in tour.scores.all %}
+                <div class="flex items-center justify-between px-4 py-3">
+                    <span style="color: {{ score.joueur.couleur }}; font-weight: bold;" class="text-sm">
+                        {{ score.joueur.joueurNom }}
+                        {% if score.dumble %}<span class="badge badge-accent badge-sm ml-1">Dumble</span>{% endif %}
+                    </span>
+                    <span class="text-sm">{{ score.score }}</span>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+
 </div>
 {% endblock %}
