@@ -49,7 +49,8 @@ def raz_Partie(request, type_jeu): #RAZ de la partie
     return redirect(routes_par_jeu.get(type_jeu, 'accueil')) # Renvoie la route dynamiquement construite en fonction du type de jeu
 
 def affiche_accueil(request):
-    return render(request, 'partie/accueil.html')
+    nb_parties_jouees = Partie.objects.filter(dateFin__isnull=False).count()
+    return render(request, 'partie/accueil.html', {'nb_parties_jouees': nb_parties_jouees})
 
 def selection_partie(request, type_jeu): # Page de sélection des joueurs avant le lancement de la partie
     joueurs = ListeJoueurs.objects.order_by('joueurNum')
@@ -348,7 +349,6 @@ def debut_Dumble(request):
         'tours': tours,
         'numero_tour_actif': (tours.aggregate(Max('numero'))['numero__max'] or 0) + 1,
     })
-
 
 def fin_partie(request, partie_id): # Calcul le score final des joueurs, qui gagne la partie (en fonction du type de jeu), enregistre ces infos puis les affiche
     partie = get_object_or_404(Partie, id=partie_id)

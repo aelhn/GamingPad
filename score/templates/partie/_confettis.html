@@ -1,0 +1,40 @@
+<div id="confettis-conteneur" style="position: fixed; inset: 0; pointer-events: none; overflow: hidden; z-index: 50;"></div>
+<script>
+// Génère quelques dizaines de petits carrés colorés pour un effet confettis 
+(function() {
+    const conteneur = document.getElementById('confettis-conteneur');
+    const couleurs = ['#e74c3c', '#3498db', '#2ecc71', '#f1c40f', '#9b59b6', '#1abc9c'];
+
+    for (let i = 0; i < 60; i++) {
+        const confetti = document.createElement('div');
+        confetti.style.position = 'absolute';
+        confetti.style.width = '8px';
+        confetti.style.height = '8px';
+        confetti.style.backgroundColor = couleurs[Math.floor(Math.random() * couleurs.length)];
+        confetti.style.left = Math.random() * 100 + 'vw';
+        confetti.style.top = '-20px';
+        confetti.style.opacity = '0.9';
+        confetti.style.borderRadius = Math.random() > 0.5 ? '50%' : '2px';
+        confetti.style.transform = 'rotate(' + Math.random() * 360 + 'deg)';
+
+        const duree = 2 + Math.random() * 1.5;
+        const delai = Math.random() * 0.5;
+        confetti.style.animation = 'chute-confetti ' + duree + 's ease-in ' + delai + 's forwards';
+
+        conteneur.appendChild(confetti);
+    }
+
+    // Nettoie le DOM une fois l'animation terminee, pas la peine de garder ces elements
+    setTimeout(function() {
+        conteneur.remove();
+    }, 4000);
+})();
+</script>
+<style>
+@keyframes chute-confetti {
+    to {
+        transform: translateY(100vh) rotate(720deg);
+        opacity: 0;
+    }
+}
+</style>

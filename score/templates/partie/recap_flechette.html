@@ -40,4 +40,11 @@
 <a href="{% url 'partie_Flechette' %}" class="btn btn-primary w-full mt-4">Recommencer une partie</a>
 <div class="divider"></div>
 <a href="{% url 'accueil' %}" class="btn btn-outline btn-warning w-full mb-4">Retour à l'accueil</a>
+
+<!-- Confettis -->
+{% if partie.gagnant %}
+{% include "partie/_confettis.html" %}
+{% endif %} 
+<!-- Confettis -->
+ 
 {% endblock %}
