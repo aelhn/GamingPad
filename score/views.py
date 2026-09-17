@@ -37,7 +37,7 @@ def raz_Partie(request, type_jeu): #RAZ de la partie
         Partie.objects.filter(id=partie_id).delete()
         del request.session[nom_var_session]
 
-    cle_selection = f'joueurs_{type_jeu}' # TODO : eclaircir ce point
+    cle_selection = f'joueurs_{type_jeu}' # On vérifie que la clé de la session (qui stocke la liste de joueurs) existe avant d'essayer de la supprimer, sinon erreur
     if cle_selection in request.session:
         del request.session[cle_selection]
 
@@ -54,7 +54,7 @@ def affiche_accueil(request):
 def selection_partie(request, type_jeu): # Page de sélection des joueurs avant le lancement de la partie
     joueurs = ListeJoueurs.objects.order_by('joueurNum')
 
-    if request.method == "POST": # TODO : eclaircir ce point
+    if request.method == "POST":
         ids_selectionnes = request.POST.getlist('joueurs_selectionnes')
         request.session[f'joueurs_{type_jeu}'] = ids_selectionnes
 
@@ -312,7 +312,7 @@ def debut_Dumble(request):
     joueurs = ListeJoueurs.objects.filter(id__in=ids_selectionnes).order_by('joueurNum')
     tours = partie.tours.order_by('numero')
 
-    if request.method == "POST" and 'valider_tour' in request.POST: # TODO : Expliquer le 'valider_tour' in request.POST. Qu'est-ce qu'on essaie de faire ici
+    if request.method == "POST" and 'valider_tour' in request.POST: # Vérifie que c'est bien le bouton de validation du tour qui a été cliqué (plusieurs boutons existent, test supplémentaire)
         dernier_numero = tours.aggregate(Max('numero'))['numero__max'] or 0
         tour = Tour.objects.create(partie=partie, numero=dernier_numero + 1)
 
@@ -408,8 +408,8 @@ def fin_partie(request, partie_id): # Calcul le score final des joueurs, qui gag
 
         score_totaux = []
         for joueur in joueurs:
-            score_totaux.append({ # TODO : Pourquoi des __ ici pour joueurNom et pas pour _couleur ou _id
-                'joueur__joueurNom': joueur.joueurNom,
+            score_totaux.append({
+                'joueur_nom': joueur.joueurNom,
                 'joueur_couleur': joueur.couleur,
                 'joueur_id': joueur.id,
                 'total': totaux[joueur.id]['total'],
