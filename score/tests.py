@@ -1,10 +1,38 @@
 from django.test import TestCase
+from django.utils import timezone
+from django.urls import reverse
 from score.models import ListeJoueurs
 from score.views import determiner_role_president
-from django.urls import reverse
 from .models import Partie, Tour, ScoreTour, AjustementDumble
 from .views import calculer_totaux_dumble
 
+class HistoriqueTestCase(TestCase):
+    def setUp(self):         # Prepare 2 joueurs et 2 parties (une terminee, une en cours) pour verifier le filtrage
+        self.joueur1 = ListeJoueurs.objects.create(joueurNom="Axel")
+        self.joueur2 = ListeJoueurs.objects.create(joueurNom="Chloe")
+
+        self.partie_terminee = Partie.objects.create(
+            typeJeu='flechette',
+            dateFin=timezone.now(),
+            gagnant=self.joueur1,
+        )
+        self.partie_en_cours = Partie.objects.create(typeJeu='flechette')
+
+    def test_parties_terminees_uniquement(self): # Vérifie qu'uniquement les parties terminées n'apparaissent 
+        # Exclut les lignes sans dateFin donc (car non terminées)
+        response = self.client.get(reverse('historique_parties'))
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, self.joueur1.joueurNom)  # Nom du gagnant
+        self.assertEqual(len(response.context['parties']), 1)  # une seule partie doit remonter
+
+    def test_detail_par_manche(self): # Verifie que le detail d'une manche jouée (joueur + score) apparait bien
+        tour = Tour.objects.create(partie=self.partie_terminee, numero=1)
+        ScoreTour.objects.create(tour=tour, joueur=self.joueur1, score=100, casse=False)
+
+        response = self.client.get(reverse('historique_parties'))
+        item = response.context['parties'][0]
+        self.assertEqual(len(item['tours_detail']), 1)
+        self.assertEqual(item['tours_detail'][0]['numero'], 1)
 
 class ListeJoueursTestCase(TestCase):
     def test_numero_auto_incremente(self):

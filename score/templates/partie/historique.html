@@ -1,0 +1,70 @@
+{% extends "partie/base.html" %}
+
+{% block content %}
+<h1 class="text-2xl font-bold mb-1">Historique des parties</h1>
+<p class="opacity-60 mb-4">{{ parties|length }} partie{{ parties|length|pluralize }} terminée{{ parties|length|pluralize }}</p>
+
+{% if not parties %}
+<p class="opacity-40">Aucune partie terminée pour l'instant.</p>
+{% endif %}
+
+<div class="space-y-3">
+    {% for item in parties %}
+    <details class="bg-base-200 rounded-lg p-4">
+        <summary class="cursor-pointer flex items-center justify-between list-none">
+            <div>
+                <span class="font-bold">{{ item.type_affiche }}</span>
+                <span class="text-sm opacity-60 ml-2">{{ item.partie.dateFin|date:"d/m/Y H:i" }}</span>
+            </div>
+            <div class="flex items-center gap-3">
+                {% if item.partie.gagnant %}
+                <span style="color: {{ item.partie.gagnant.couleur }}; font-weight: bold;">{{ item.partie.gagnant.joueurNom }}</span>
+                {% endif %}
+                <span class="fleche-historique opacity-50">▾</span>
+            </div>
+        </summary>
+
+        <div class="mt-4 space-y-3">
+            {% for tour_detail in item.tours_detail %}
+            <div class="bg-base-100 rounded-lg p-3">
+                <p class="text-sm opacity-60 mb-2">Manche {{ tour_detail.numero }}</p>
+                <div class="space-y-1">
+                    {% for ligne in tour_detail.lignes %}
+                    <div class="flex items-center justify-between text-sm">
+                        {% if item.partie.typeJeu == 'president' %}
+                        <span style="color: {{ ligne.joueur.couleur }}; font-weight: bold;">{{ ligne.joueur.joueurNom }}</span>
+                        <span class="opacity-60">{{ ligne.role }}</span>
+                        {% else %}
+                        <span style="color: {{ ligne.joueur.couleur }}; font-weight: bold;">
+                            {{ ligne.joueur.joueurNom }}
+                            {% if ligne.casse %}<span class="badge badge-warning badge-xs ml-1">Casse</span>{% endif %}
+                            {% if ligne.dumble %}<span class="badge badge-accent badge-xs ml-1">Dumble</span>{% endif %}
+                        </span>
+                        <span>{{ ligne.score }}</span>
+                        {% endif %}
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </details>
+    {% endfor %}
+</div>
+
+<style>
+details[open] .fleche-historique {
+    transform: rotate(180deg);
+}
+.fleche-historique {
+    display: inline-block;
+    transition: transform 0.2s;
+}
+summary.list-none::-webkit-details-marker {
+    display: none;
+}
+summary.list-none {
+    list-style: none;
+}
+</style>
+{% endblock %}

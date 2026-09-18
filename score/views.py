@@ -11,6 +11,34 @@ from django.utils import timezone
 from score.forms import JoueurForm, CouleurForm, SuggestionForm
 from .models import AjustementDumble, ListeJoueurs, Partie, Suggestion, Tour, ScoreTour, ClassementPartie, ClassementManche
 
+def historique_parties(request):
+    # Filtre les parties terminées, triées par date (plus récent)
+    parties_query = Partie.objects.filter(dateFin__isnull=False).order_by('-dateFin')
+
+    noms_jeu = {
+        'flechette': 'Fléchettes 501',
+        'president': 'Président',
+        'dumble': 'Dumble',
+    }
+
+    parties = []
+    for partie in parties_query: # Selon le type de partie, récupère les détails liés
+        tours_detail = []
+        for tour in partie.tours.order_by('numero'):
+            if partie.typeJeu == 'president':
+                lignes = ClassementManche.objects.filter(tour=tour).order_by('ordre_arrivee')
+            else:
+                lignes = tour.scores.all()
+            tours_detail.append({'numero': tour.numero, 'lignes': lignes})
+
+        parties.append({
+            'partie': partie,
+            'type_affiche': noms_jeu.get(partie.typeJeu, partie.typeJeu),
+            'tours_detail': tours_detail,
+        })
+
+    return render(request, 'partie/historique.html', {'parties': parties})
+
 def ajout_rapide_joueur(request): # Depuis la sélection des joueurs, permet un ajout rapide et simplifié d'un joueur via JSON (sans request donc sans recharger la page et donc perdre la liste)
     if request.method == "POST":
         nom = request.POST.get('nom','').strip()
@@ -77,7 +105,6 @@ def selection_partie(request, type_jeu): # Page de sélection des joueurs avant 
         'type_jeu': type_jeu,
         'nom_jeu': noms_jeu.get(type_jeu, type_jeu)
     })
-
 
 def debut_Flechettes(request):
     if 'joueurs_flechette' not in request.session:

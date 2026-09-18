@@ -13,6 +13,7 @@ urlpatterns = [
     path('joueurs/ajout-rapide/', views.ajout_rapide_joueur, name='ajout_rapide_joueur'),
     path('selection/<str:type_jeu>/', views.selection_partie, name='selection_partie'),
     path('raz/<str:type_jeu>/', views.raz_Partie, name='raz_partie'),
+    path('historique/', views.historique_parties, name='historique_parties'),
 
     # flechette
     path('flechette/', views.debut_Flechettes, name='partie_Flechette'),
